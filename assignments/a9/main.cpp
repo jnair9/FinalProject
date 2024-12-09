@@ -73,6 +73,8 @@ public:
         OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/star.png", "star_color");
         OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/hat_color.jpg", "hat_color");
         OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/hat_normal.jpeg", "hat_normal");
+        OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/broom_color.jpeg", "broom_color");
+        OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/broom_normal.jpeg", "broom_normal");
 
         //// Add all the lights you need for the scene (no more than 4 lights)
         //// The four parameters are position, ambient, diffuse, and specular.
@@ -167,10 +169,10 @@ public:
 
             //// set object's transform
             Matrix4f t;
-            t << 0.05, 0, 0, 0,
-                0, 0.05, 0, 0,
-                0, 0, 0.05, 0,
-                0, 0, 0, 0.05;
+            t << 0.02, 0, 0, 0,
+                0, 0.02, 0, 0,
+                0, 0, 0.02, 0,
+                0, 0, 0, 1;
             sorting_hat->Set_Model_Matrix(t);
 
             //// set object's material
@@ -186,6 +188,32 @@ public:
             //// bind shader to object
             sorting_hat->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("basic"));
         }
+{
+            //// create object by reading an obj mesh
+            auto broom = Add_Obj_Mesh_Object("obj/broom.obj");
+
+            //// set object's transform
+            Matrix4f t;
+            t << 0.05, 0, 0, 0,
+                0, 0.05, 0, -0.5,
+                0, 0, 0.05, 0.5,
+                0, 0, 0, 1;
+            broom->Set_Model_Matrix(t);
+
+            //// set object's material
+            broom->Set_Ka(Vector3f(0.1, 0.1, 0.1));
+            broom->Set_Kd(Vector3f(0.7, 0.7, 0.7));
+            broom->Set_Ks(Vector3f(2, 2, 2));
+            broom->Set_Shininess(128);
+
+            //// bind texture to object
+            broom->Add_Texture("tex_color", OpenGLTextureLibrary::Get_Texture("hat_color"));
+            broom->Add_Texture("tex_normal", OpenGLTextureLibrary::Get_Texture("hat_normal"));
+
+            //// bind shader to object
+            broom->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("basic"));
+        }
+
         // {
         //     //// create object by reading an obj mesh
         //     auto bunny = Add_Obj_Mesh_Object("obj/bunny.obj");
