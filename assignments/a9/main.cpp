@@ -28,6 +28,9 @@ class MyDriver : public OpenGLViewer
     OpenGLSkybox *skybox = nullptr;
     clock_t startTime;
 
+    OpenGLTriangleMesh* broom_ptr = nullptr;
+
+
 public:
     virtual void Initialize()
     {
@@ -210,30 +213,24 @@ public:
             //// bind shader to object
             sorting_hat->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("basic"));
         }
-{
-            //// create object by reading an obj mesh
-            auto broom = Add_Obj_Mesh_Object("obj/broom.obj");
+            {
+            broom_ptr = Add_Obj_Mesh_Object("obj/broom.obj");
 
-            //// set object's transform
             Matrix4f t;
+
             t << 0.05, 0, 0, 0,
                 0, 0.05, 0, -0.5,
                 0, 0, 0.05, 0.5,
                 0, 0, 0, 1;
-            broom->Set_Model_Matrix(t);
+            broom_ptr->Set_Model_Matrix(t);
 
-            //// set object's material
-            broom->Set_Ka(Vector3f(0.1, 0.1, 0.1));
-            broom->Set_Kd(Vector3f(0.7, 0.7, 0.7));
-            broom->Set_Ks(Vector3f(2, 2, 2));
-            broom->Set_Shininess(128);
-
-            //// bind texture to object
-            broom->Add_Texture("tex_color", OpenGLTextureLibrary::Get_Texture("hat_color"));
-            broom->Add_Texture("tex_normal", OpenGLTextureLibrary::Get_Texture("hat_normal"));
-
-            //// bind shader to object
-            broom->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("basic"));
+            broom_ptr->Set_Ka(Vector3f(0.1, 0.1, 0.1));
+            broom_ptr->Set_Kd(Vector3f(0.7, 0.7, 0.7));
+            broom_ptr->Set_Ks(Vector3f(2, 2, 2));
+            broom_ptr->Set_Shininess(128);
+            broom_ptr->Add_Texture("tex_color", OpenGLTextureLibrary::Get_Texture("broom_color"));
+            broom_ptr->Add_Texture("tex_normal", OpenGLTextureLibrary::Get_Texture("broom_normal"));
+            broom_ptr->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("basic"));
         }
 
         // {
@@ -419,6 +416,28 @@ public:
     //// Go to next frame
     virtual void Toggle_Next_Frame()
     {
+
+   float current_time = GLfloat(clock() - startTime) / CLOCKS_PER_SEC;
+
+        if (broom_ptr) {
+        float y_offset = 0.1f * sin(current_time); 
+        float z_offset = 0.1f * cos(current_time);  
+        float tilt = 15.0f * sin(current_time * 0.5f) * (3.14159f/180.0f);  
+    
+        float rock_angle = 10.0f * sin(current_time * 0.7f) * (3.14159f/180.0f);
+        float cos_r = cos(rock_angle);
+        float sin_r = sin(rock_angle);
+        
+        float cos_t = cos(tilt);
+        float sin_t = sin(tilt);
+        
+        Matrix4f t;
+        t << 0.05 * cos_r, -0.05 * sin_r, 0, 0,
+            0.05 * sin_r * cos_t, 0.05 * cos_r * cos_t, -0.05 * sin_t, -0.5 + y_offset,
+            0.05 * sin_r * sin_t, 0.05 * cos_r * sin_t, 0.05 * cos_t, 0.5 + z_offset,
+            0, 0, 0, 1;
+        broom_ptr->Set_Model_Matrix(t);
+    }     
         for (auto &mesh_obj : mesh_object_array)
             mesh_obj->setTime(GLfloat(clock() - startTime) / CLOCKS_PER_SEC);
 
