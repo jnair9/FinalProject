@@ -88,6 +88,10 @@ public:
         OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/FinalBackground.png", "background_image");
         OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/broom_color.jpeg", "broom_color");
         OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/broom_normal.jpeg", "broom_normal");
+        OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/transparent_color.jpg", "transparent_color");
+        OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/white_color.jpg", "white_color");
+
+
 
         //// Add all the lights you need for the scene (no more than 4 lights)
         //// The four parameters are position, ambient, diffuse, and specular.
@@ -341,24 +345,24 @@ public:
         //// Here we show an example of adding a transparent object with alpha blending
         //// This example will be useful if you implement objects such as tree leaves, grass blades, flower pedals, etc.
         //// Alpha blending will be turned on automatically if your texture has the alpha channel
-        // {
-        //     //// create object by reading an obj mesh
-        //     auto sqad = Add_Obj_Mesh_Object("obj/sqad.obj");
+        {
+            //// create object by reading an obj mesh
+            auto sqad = Add_Obj_Mesh_Object("obj/sqad.obj");
 
-        //     //// set object's transform
-        //     Matrix4f t;
-        //     t << 1, 0, 0, -0.5,
-        //         0, 1, 0, 0,
-        //         0, 0, 1, 1.5,
-        //         0, 0, 0, 1;
-        //     sqad->Set_Model_Matrix(t);
+            //// set object's transform
+            Matrix4f t;
+            t << 1, 0, 0, 1.5,
+                0, 1, 0, 0,
+                0, 0, 1, 1.5,
+                0, 0, 0, 1;
+            sqad->Set_Model_Matrix(t);
 
-        //     //// bind texture to object
-        //     sqad->Add_Texture("tex_color", OpenGLTextureLibrary::Get_Texture("window_color"));
+            //// bind texture to object
+            sqad->Add_Texture("tex_color", OpenGLTextureLibrary::Get_Texture("window_color"));
 
-        //     //// bind shader to object
-        //     sqad->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("blend"));
-        // }
+            //// bind shader to object
+            sqad->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("blend"));
+        }
 
         //// Here we show an example of adding a billboard particle with a star shape using alpha blending
         //// The billboard is rendered with its texture and is always facing the camera.
