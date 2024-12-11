@@ -1,268 +1,318 @@
 #version 330 core
+/*
+This simple shader draws a sparkle particle effect.
+Every particle is drawn as a superellipse. 
+*/
+out vec4 fragColor;
+in vec2 fragCoord;
+#define PARTICLE_COUNT 70
+uniform vec3      iResolution;           // viewport resolution (in pixels)
+uniform float     iTime;                 // shader playback time (in seconds)
+uniform float     iTimeDelta;            // render time (in seconds)
+uniform float     iFrameRate;            // shader frame rate
+uniform int       iFrame;                // shader playback frame
+uniform float     iChannelTime[4];       // channel playback time (in seconds)
+uniform vec3      iChannelResolution[4]; // channel resolution (in pixels)
+uniform vec4      iMouse;                // mouse pixel coords. xy: current (if MLB down), zw: click
+uniform vec4      iDate;                 // (year, month, day, time in seconds)
 
-uniform vec2 iResolution;       /* window resolution */
-uniform float iTime;            /* time */
-uniform int iFrame;             /* frame index */
-in vec2 fragCoord;              /* screen space coordinate */
-out vec4 outputColor;           /* output color */
+float hash( float n ) { return fract(sin(n)*753.5453123); }
 
-/////////////////////////////////////////////////////
-//// Macro definition for time: this is the actual time you use for your animation
-/////////////////////////////////////////////////////
-//// You may adjust the multipler below to make the animaiton run fast (by increasing the value) 
-//// or run slower (by decreasing the value), according to your needs (it varies on different laptops).
-//// We set the default value to be 1.0.
-/////////////////////////////////////////////////////
-
-#define Time (iTime*1.0)            
-
-#define PI 3.14159265359
-#define TWO_PI 6.28318530718
-#define Gravity 0.7             /* gravity */
-#define NUM_STAR 30.            /* number of stars on the sky */
-#define NUM_EMISSION 30.        /* number of emission particles */
-#define NUM_FIREWORKS 5         /* number of fireworks */
-#define DURATION 3.             /* duration of each fireworks period */
-
-const vec2 g = vec2(.0, -Gravity); /* gravity */
-
-/////////////////////////////////////////////////////
-//// Hash functions
-/////////////////////////////////////////////////////
-
-//// This hash function takes input t and returns random float between 0 and 1
-float hash1d(float t)
+float noise( in vec2 x )
 {
-    t += 1.;
-    return fract(sin(t * 674.3) * 453.2);
-}
-
-//// This hash function takes input t and returns random vec2 with each component between 0 and 1
-vec2 hash2d(float t)
-{
-    t += 1.;
-    float x = fract(sin(t * 674.3) * 453.2);
-    float y = fract(sin((t + x) * 714.3) * 263.2);
-
-    return vec2(x, y);
-}
-
-//// This hash function takes input t and returns random vec3 with each component between 0 and 1
-vec3 hash3d(float t)
-{
-    t += 1.;
-    float x = fract(sin(t * 674.3) * 453.2);
-    float y = fract(sin((t + x) * 714.3) * 263.2);
-    float z = fract(sin((t + y) * 134.3) * 534.2);
-
-    return vec3(x, y, z);
-}
-
-//// This hash function takes input t and returns a random vec2 on a circle
-vec2 hash2d_polar(float t)
-{
-    t += 1.;
-    float a = fract(sin(t * 674.3) * 453.2) * TWO_PI;
-    float d = fract(sin((t + a) * 714.3) * 263.2);
-    return vec2(sin(a), cos(a)) * d;
-}
-
-/////////////////////////////////////////////////////
-//// Step 1: render a single particle
-//// In this function, you are asked to implement the rendering of a single particle onto the screen.
-//// The task is to calculate the distance between the current fragment and the particle (both in 2D), 
-//// and then use the distance to build a decay function f(d)=1/d, and multiply the function value with brightness and color
-//// to calculate the fragment color value.
-/////////////////////////////////////////////////////
-
-vec3 renderParticle(vec2 fragPos, vec2 particlePos, float brightness, vec3 color)
-{
-    vec3 fragColor = vec3(0.0);
-
-	/* your implementation starts */
-      
+    vec2 p = floor(x);
+    vec2 f = fract(x);
+    f = f*f*(3.0-2.0*f);
 	
-    /* your implementation ends */
-
-    return fragColor;
+    float n = p.x + p.y*157.0;
+    return mix(mix( hash(n+  0.0), hash(n+  1.0),f.x),
+                   mix( hash(n+157.0), hash(n+158.0),f.x),f.y);
 }
 
-/////////////////////////////////////////////////////
-//// Step 2: render the starry sky with multiple particles
-//// In this function, you are asked to implement the rendering of a starry sky with multiple particles.
-//// Your tasks include three parts within the for-loop that traverses all the stars: 
-//// (1) produce a time-varying brightness by using the variable t and the default value (0.0004).
-//// (2) come up with a color for each star (it can be random or uniform, up to your preference);
-//// (3) call the renderParticle function you've implemented in the previous steps with the appropriate parameters
-//// and accumulate the result to fragColor.
-//// After implementing this function, uncomment the Step 2 block in mainImage() to testify its correctness.
-//// You should be able to see a starry sky with blinking stars if everything is implemented correctly.
-/////////////////////////////////////////////////////
+// 2D rotation matrix by approximately 36 degrees.
+mat2 m = mat2(0.8, 0.6, -0.6, 0.8);
 
-vec3 renderStars(vec2 fragPos)
-{
-    vec3 fragColor = vec3(0.01, 0.04, 0.3);
-    float t = Time;
+float fbm(vec2 r) {
+      
+    
+    float f;
+    
+    // rotate every octave to add more variation. 
+    f  = 0.5000*noise( r ); r = r*m*2.01;
+    f += 0.2500*noise( r ); r = r*m*2.02;
+    f += 0.1250*noise( r ); r = r*m*2.03;
+    f += 0.0625*noise( r ); r = r*m*2.01;
+    
+    return f;   
+}
 
-    for(float i = 0.; i < NUM_STAR; i++){
-        vec2 pos = (hash2d(i) - .5) * iResolution.xy / iResolution.y;
+float rand(float co){
+    return fract(sin(dot(vec2(co ,co ) ,vec2(12.9898,78.233))) * 43758.5453);
+}
 
-        float brightness = .0004;
+float rand_range(float seed, float low, float high) {
+	return low + (high - low) * rand(seed);
+}
 
-        /* your implementation starts */
 
+vec3 rand_color(float seed, vec3 col, vec3 variation) {
+    return vec3(
+        col.x + rand_range(seed,-variation.x, +variation.x),
+        col.y + rand_range(seed,-variation.y, +variation.y),
+        col.z + rand_range(seed,-variation.z, +variation.z));
+}
+
+
+// Rotation matrix for rotating a point around the origin.
+// rot is in radians.
+mat2 rot_matrix(float rot) {
+    return mat2(    
+        cos(rot), -sin(rot),
+        sin(rot),  cos(rot)
+    );
+}
+
+
+// id = particle id
+vec4 sparkle(float time, float id, vec2 q) { 
+   
+    float lifespan = rand_range(id*1232.23232, 3.0, 4.5);
+    
+    // pgen = particle generation
+    // every time a particle has outlived its lifespan,
+    // it is respawned as a new particle at a new position
+    // the generation of this new particle is one plus
+    // the generation of the old particle. 
+    float pgen = float(int(time / lifespan));
+    
+    // how long the particle of the current generation has lived. 
+    float lifetime = time - lifespan * pgen;
+    
+    // pseed is used to determine the random attributes of the particle.
+    // two particles with the same id but different generations
+    // are essentially different particles.
+    float pseed = id *12.2 + pgen * 50.3;
+    
+    
+    // we globally move all particles in an ellipse at this speed.
+    float rot_speed = 0.0454;
+    
+    // ranges from -0.2 to  0.9
+    float xsource = 0.35 + 0.55* cos(time*rot_speed);
+    //float xsource = 0.2;
+    
+    // ranges from -0.40 to 0.15
+    float ysource = -0.125 + 0.27500 * sin(time*rot_speed);
+    
+    // inital particle position.
+    vec2 pos =  q - vec2(
+            rand_range(pseed*1.3+3.0, xsource - 0.2, xsource + 0.2),   
+            rand_range(pseed*113.2+0.6, ysource-0.02, ysource+0.02)          
+            );
+    
+    // particle velocity
+    vec2 vel = vec2(  
+        rand_range(pseed*-4.4314+123.3243, -0.012, +0.012),       
+        rand_range(pseed*-54.3232+33.323043, -0.06, -0.04)        
+            );
+    
+    // move particle based on velocity.
+    pos += vel * lifetime;
+    
+    
+    
+    // controls the diameter of the superellipse.
+    // we vary it over the lifetime to animate the particle.
+    float dx = 0.02 + 0.01*sin(9.0*(time+pseed*12.5454));
+    float dy = 0.02 + 0.01*sin(9.0*(time+pseed*223.323) );
+    
+    
+    // slightly rotate the superellipse randomly.
+    float rot = rand_range(pseed*23.33+3.4353, -0.10, 0.10);
+    pos = rot_matrix(rot) * pos;
+    
+    // every particle is described by a superellipse
+    // https://en.wikipedia.org/wiki/Superellipse
+    float func =
+        pow(abs(pos.x/ (dx)  ), 0.5)  + pow(abs(pos.y/dy), 0.5) - 0.5;
+    
+    vec4 res;
+    
+    vec3 start_color = rand_color(pseed *19.3232, 
+                         vec3(0.9,0.9,0),
+                         vec3(0.4,0.4,0.4)
+                         );
+    
+    // now rgb-value over 1.0 allowed.
+    if(start_color.r > 1.0) {
+        start_color.r = 1.0;
+    } 
+    if(start_color.g > 1.0) {
+        start_color.g = 1.0;
+    }
+    
+    vec3 end_color;
+    
+    if(start_color.r < 0.85 && start_color.r < 0.85) {
+    
+     	end_color = start_color + vec3(0.10);
+       
+    } else {
         
-        /* your implementation ends */
+        end_color = start_color - vec3(0.10);
     }
-
-    return fragColor;
-}
-
-/////////////////////////////////////////////////////
-//// Step 3A: simulate the motion of a single particle by programming ballistic motion
-//// In this function, you are asked to calculate the position of the particle using the expression of ballistic motion.
-//// The function takes the initial position, initial velocity, and time t as input, and returns the particle's current location.
-/////////////////////////////////////////////////////
-
-vec2 moveParticle(vec2 initPos, vec2 initVel, float t)
-{
-    vec2 currentPos = initPos;
-
-    /* your implementation starts */
-
-
-    /* your implementation ends */
-
-    return currentPos;
-}
-
-/////////////////////////////////////////////////////
-//// Step 3B: putting simulation and rendering together in one function call
-//// In this function, you will practice to combine the animaiton and rendering functions together 
-//// by calling moveParticle() and renderParticle() you have implemented to calculate the fragment color.
-//// The idea is to update the particle's current position with moveParticle() first, 
-//// and then use this position as an input for renderParticles() to calculate the fragment color.
-//// After implementing both Step 3A and 3B, you want to testify its correctness by uncommenting Step 3 in mainImage(). 
-//// The expected result is the animation of a single particle that moves along a ballistic trajectory.
-/////////////////////////////////////////////////////
-
-vec3 simSingleParticle(vec2 fragPos, vec2 initPos, vec2 initVel, float t, float brightness, vec3 color)
-{
-    vec3 fragColor = vec3(0.0);
-
-    /* your implementation starts */
-
     
-    /* your implementation ends */
-
-    return fragColor;
-}
-
-/////////////////////////////////////////////////////
-//// Step 4: simulating fireworks
-//// You will implement the animation of a fireworks explosion in this function.
-//// The key idea is to separate the animation into two phases.
-//// For Phase I, we animate a single "boss particle" that follows a ballistic trajectory.
-//// For Phase II, we spawn a number of emitting particles based on the position of the boss particle at the emitTime,
-//// and then simulate the trajectory of each emitting particle starting from the emitPos, with a random emitVel, using emitT. 
-//// The simulation is implemented by calling the function simSingleParticle you have implemented from the previous step.
-//// The color returned from the function call needs to be accumulated to fragColor that will be returned as the fragment color.
-//// Your implementation will be focused on the Phase II part, 
-//// in which you need to update the emitting particle's brightness to show some flickering and fading effects, 
-//// and call simSingleParticle() with appropriate parameters to accumulate its color to the fragment.
-//// After implementing this step, you can test the fireworks effect by uncommenting the block of Step 4 in mainImage().
-/////////////////////////////////////////////////////
-
-vec3 simSingleFirework(vec2 fragPos, vec2 launchPos, vec2 launchVel, float t, vec3 color)
-{
-    vec3 fragColor = vec3(0.0);
-    float emitTime = 1.5;
-
-    if(t < emitTime){
-        float brightness = .002;
-        vec2 initPos = launchPos;
-        vec2 initVel = launchVel;
-        fragColor += simSingleParticle(fragPos, initPos, initVel, t, brightness, color);
-    }
-    else{
-        float emitT = t - emitTime; // time since emission
-        vec2 emitPos = moveParticle(launchPos, launchVel, emitTime);
-
-        for(float i = 0.; i < NUM_EMISSION; i++){
-            vec2 emitVel = hash2d_polar(i) * .7; // random direction with max magnitude 0.7
-
-            /* your implementation starts */
-
-
-            /* your implementation ends */
-        }
-    }
-
-    return fragColor;
-}
-
-vec3 renderFireworks(vec2 fragPos)
-{
-    vec3 fragColor = vec3(0.0);
-
-    for(float i = 0.; i < NUM_FIREWORKS; i++){
-        float lauchTime = i;
-        float relTime = Time - lauchTime;
-        float t = mod(relTime, DURATION);
-        float idx = floor(relTime / DURATION);
-
-        vec2 launchPos = vec2((hash1d(idx) - .5) * iResolution.x / iResolution.y, -0.5);
-        vec2 launchVel = vec2(-launchPos.x * 0.66, hash1d(lauchTime + 1.) * 0.3 + .9);
-        vec3 color = sin(40. * hash3d(lauchTime) * idx) * 0.25 + 0.75;
-
-        fragColor += simSingleFirework(fragPos, launchPos, launchVel, t, color);
-    }
-
-    return fragColor;
-}
-
-void mainImage(out vec4 outputColor, in vec2 fragCoord)
-{
-    //// fragPos's center is at the center of the screen, fragPos.y range is [-0.5, 0.5]
-    vec2 fragPos = (fragCoord - .5 * iResolution.xy) / iResolution.y;
-
-    vec3 fragColor = vec3(0.0);
-
-    //// Step 1: render single particle
-    {
-        vec2 pos = vec2(0., 0.);
-        float brightness = 0.005;
-        vec3 color = vec3(0.15, 0.71, 0.92);
-        fragColor = renderParticle(fragPos, pos, brightness, color);
-    }
-
-    //// Step 2: render starry sky
-    //// Uncomment the following block to test your Step 2 implementation
-    //{
-    //    fragColor = renderStars(fragPos);
-    //}
-
-    //// Step 3: simulate single particle
-    //// Uncomment the following block to test your Step 3 implementation
-    //{
-    //    vec2 initPos = vec2(-0.5, -0.5);
-    //    vec2 initVel = vec2(0.4, 1.);
-    //    float t = mod(Time, DURATION);
-    //    float brightnes = .005;
-    //    vec3 color = vec3(0.15, 0.71, 0.92);
-    //    fragColor = renderStars(fragPos) + simSingleParticle(fragPos, initPos, initVel, t, brightnes, color);
-    //}
+    // slightly vary color over lifetime; 
+    // makes for a small blinking effect.
+    float f= 1.0/2.0 + (  sin(9.0*(time+12.5454))  ) / 2.0;
+    res.xyz = mix(start_color, end_color, f);
     
-    //// Step 4: simulate fireworks
-    //// Uncomment the following block to test your Step 4 implementation
-    //{
-    //    fragColor = renderStars(fragPos) + renderFireworks(fragPos);
-    //}
     
-    outputColor = vec4(fragColor, 1.0);
+    
+    // uncomment this section to overlay a noise function over the particles.
+    // this adds more color variation to the individual particles.
+    // however, be vary that this is VERY slow. 
+    /*
+    pos *= 100.0;
+      
+    vec3 rainbow = vec3(
+         fbm(pos + pseed * 10.430 + vec2(0.2,0.1)),
+         fbm(pos + pseed * 12.5443 + vec2(0.3554,0.94343)),
+         fbm(pos + pseed * -12.12 + vec2(1.8343,13.23454)) 
+
+        );
+    
+    res.xyz = mix(res.xyz, rainbow, 0.3);
+    */
+    
+    // we use this value to combine the particle with the rest
+    // of the image.
+    res.w = smoothstep(0.0, 1.1, 1.0-func);
+    
+    //fade out a particle quickly when its about to die. 
+    // but before that time, leave it mostly unchanged.
+    f = 0.000976175 * exp(6.93187* (lifetime/lifespan) );
+    res.w = mix(res.w, 0.0, f);
+    
+    return res;
 }
 
 void main()
 {
-    mainImage(outputColor, fragCoord);
+ 
+    vec2 p = fragCoord.xy / iResolution.xy;
+    p.x *= iResolution.x/iResolution.y;
+  
+    vec3 col = vec3(0,0,0); // black background color. 
+
+    vec2 q = p - vec2(0.5,0.5);
+   
+    for(int i = 0; i <PARTICLE_COUNT; i += 1){
+       
+        // particle id
+        float id = float(i);
+         
+        vec4 res = sparkle(iTime, id, q);
+    
+        // combine particle with image.
+        col = mix(col, res.xyz, res.w);       
+    }
+    
+
+    fragColor = vec4(col,1.0);
+    
+    
 }
+// #version 330 core
+
+// uniform vec2 iResolution;       // Screen resolution
+// uniform float iTime;            // Time variable for animation
+// in vec2 fragCoord;              // Fragment coordinates
+// out vec4 outputColor;           // Output color
+
+// #define PI 3.14159265359
+// #define TWO_PI 6.28318530718
+
+// /////////////////////////////////////////////////////
+// // Smooth Noise Function
+// /////////////////////////////////////////////////////
+// float noise(vec2 p) {
+//     return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+// }
+
+// float smoothNoise(vec2 p) {
+//     vec2 i = floor(p);
+//     vec2 f = fract(p);
+//     f = f * f * (3.0 - 2.0 * f); // Smooth interpolation
+//     return mix(mix(noise(i + vec2(0.0, 0.0)), noise(i + vec2(1.0, 0.0)), f.x),
+//                mix(noise(i + vec2(0.0, 1.0)), noise(i + vec2(1.0, 1.0)), f.x), f.y);
+// }
+
+// /////////////////////////////////////////////////////
+// // Turbulence Function for Flame Dynamics
+// /////////////////////////////////////////////////////
+// float turbulence(vec2 p) {
+//     float t = 0.0;
+//     float scale = 1.0;
+//     for (int i = 0; i < 6; i++) { // Increase iterations for finer details
+//         t += abs(smoothNoise(p * scale)) / scale;
+//         scale *= 2.0;
+//     }
+//     return t;
+// }
+
+// /////////////////////////////////////////////////////
+// // Flame Rendering Function
+// /////////////////////////////////////////////////////
+// vec3 renderFlame(vec2 fragPos, float time) {
+//     // Center the flame at the bottom of the screen
+//     fragPos -= vec2(0.0, -0.5); // Shift origin to screen center bottom
+
+//     // Add parabolic scaling for a wider base and narrower top
+//     fragPos.y *= 1.5 - 0.5 * fragPos.y;
+
+//     // Reverse vertical flow for upward motion
+//     vec2 p = fragPos * vec2(1.0, 2.0) - vec2(0.0, time * 3.); // Increased speed
+
+//     // Turbulence for dynamic flame shapes
+//     float n = turbulence(p * 3.0) - smoothNoise(p);
+
+//     // Flame intensity based on position and noise
+//     float intensity = smoothstep(0.4, 0.0, abs(fragPos.x) + n - fragPos.y);
+
+//     // Core of the flame (sharp, bright yellow)
+//     float core = smoothstep(0.3, 0.0, length(fragPos - vec2(0.0, -0.5)));
+
+//     // Flame color gradient (yellow to red)
+//     vec3 color = mix(vec3(1.0, 0.3, 0.0), vec3(1.0, 0.8, 0.2), intensity);
+//     color = mix(color, vec3(1.0, 0.9, 0.3), core); // Blend core brightness
+
+//     return color * intensity;
+// }
+
+// /////////////////////////////////////////////////////
+// // Main Rendering Function
+// /////////////////////////////////////////////////////
+// void mainImage(out vec4 outputColor, in vec2 fragCoord) {
+//     // Transform fragment coordinates to normalized device coordinates
+//     vec2 fragPos = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
+
+//     // Define the window for the flame
+//     vec2 windowMin = vec2(-0.5, -0.5); // Bottom-left corner of the window (normalized coordinates)
+//     vec2 windowMax = vec2(0.5, 0.5);  // Top-right corner of the window (normalized coordinates)
+
+//     // Check if the fragment is within the window
+//     if (fragPos.x < windowMin.x || fragPos.x > windowMax.x || fragPos.y < windowMin.y || fragPos.y > windowMax.y) {
+//         outputColor = vec4(0.0, 0.0, 0.0, 1.0); // Outside the window: set to black
+//         return;
+//     }
+
+//     // Render single centered flame within the window
+//     vec3 flameColor = renderFlame(fragPos, iTime);
+
+//     outputColor = vec4(flameColor, 1.0);
+// }
+
+// void main() {
+//     mainImage(outputColor, fragCoord);
+// }

@@ -25,6 +25,7 @@ class MyDriver : public OpenGLViewer
 {
     std::vector<OpenGLTriangleMesh *> mesh_object_array;
     OpenGLBgEffect *bgEffect = nullptr;
+    OpenGLTriangleMesh* fire_quad = nullptr; // Add a quad for fire effect
     OpenGLSkybox *skybox = nullptr;
     clock_t startTime;
 
@@ -79,6 +80,10 @@ public:
         OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/FinalBackground.png", "background_image");
         OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/broom_color.jpeg", "broom_color");
         OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/broom_normal.jpeg", "broom_normal");
+        OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/black_color.jpg", "black_color");
+        OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/particle_texture.jpg", "particle_texture");
+        OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/transparent_color.jpg", "transparent_texture");
+
 
         //// Add all the lights you need for the scene (no more than 4 lights)
         //// The four parameters are position, ambient, diffuse, and specular.
@@ -134,9 +139,54 @@ public:
         // {
         //     bgEffect = Add_Interactive_Object<OpenGLBgEffect>();
         //     bgEffect->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("stars"));
-        //     bgEffect->Add_Texture("tex_buzz", OpenGLTextureLibrary::Get_Texture("buzz_color")); // bgEffect can also Add_Texture
+        //     // bgEffect->Add_Texture("tex_buzz", OpenGLTextureLibrary::Get_Texture("buzz_color")); // bgEffect can also Add_Texture
         //     bgEffect->Initialize();
         // }
+        // --------------------------------------------Particle
+        {
+            // Define vertices for a 2D plane
+            std::vector<Vector3> vertices = {
+                Vector3(0.0, 0.0, 0.0), // Bottom-left
+                Vector3(0.5, 0.0, 0.0),  // Bottom-right
+                Vector3(0.5, 0.5, 0.0),   // Top-right
+                Vector3(0.0, 0.5, 0.0)   // Top-left
+            };
+
+            // Define triangles (elements)
+            std::vector<Vector3i> elements = {
+                Vector3i(0, 1, 2), // First triangle
+                Vector3i(0, 2, 3)  // Second triangle
+            };
+
+            // Create the mesh object
+            auto plane_obj = Add_Tri_Mesh_Object(vertices, elements);
+
+            // Set texture coordinates (UV mapping)
+            plane_obj->mesh.Uvs() = {
+                Vector2(0.5, 0.5), // Bottom-left
+                Vector2(1.5, 0.5), // Bottom-right
+                Vector2(1.5, 1.5), // Top-right
+                Vector2(0.5, 1.5)  // Top-left
+            };
+
+            // Define the transformation matrix for positioning and scaling
+            Matrix4f t;
+            t << 0.05, 0, 0, 4,  // Scale x-axis
+                0, 0.05, 0, 2,  // Scale y-axis
+                0, 0, 0.05, 0,  // Keep z-axis as 0 (for 2D plane)
+                0, 0, 0, 1;
+
+            plane_obj->Set_Model_Matrix(t);
+
+            // Add the sparkle shader
+            plane_obj->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("stars"));
+
+            // Optionally, you can add a texture if desired
+            // plane_obj->Add_Texture("tex_buzz", OpenGLTextureLibrary::Get_Texture("transparent_texture"));
+
+            // The 2D plane with sparkles should now appear on the screen
+        }
+
         
         //// Background Option (3): Sky box
         //// Here we provide a default implementation of a sky box; customize it for your own sky box
@@ -232,6 +282,8 @@ public:
             broom_ptr->Add_Texture("tex_normal", OpenGLTextureLibrary::Get_Texture("broom_normal"));
             broom_ptr->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("basic"));
         }
+
+
 
         // {
         //     //// create object by reading an obj mesh
@@ -356,6 +408,7 @@ public:
         //// Here we create a mesh object with two triangle specified using a vertex array and a triangle array.
         //// This is an example showing how to create a mesh object without reading an .obj file. 
         //// If you are creating your own L-system, you may use this function to visualize your mesh.
+        //// --------CANDLE SPARKS--------
         // {
         //     std::vector<Vector3> vertices = { Vector3(0.5, 0, 0), Vector3(1, 0, 0), Vector3(1, 1, 0), Vector3(0, 1, 0) };
         //     std::vector<Vector3i> elements = { Vector3i(0, 1, 2), Vector3i(0, 2, 3) };
@@ -364,16 +417,19 @@ public:
         //     obj->mesh.Uvs() = { Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1) };
 
         //     Matrix4f t;
-        //     t << 1, 0, 0, -0.5,
-        //         0, 1, 0, -1.5,
-        //         0, 0, 1, 0,
+        //     t << 0.1, 0, 0, -0.5,
+        //         0, 0.1, 0, -1.5,
+        //         0, 0, 0.1, 0,
         //         0, 0, 0, 1;
 
         //     obj->Set_Model_Matrix(t);
 
-        //     obj->Add_Texture("tex_color", OpenGLTextureLibrary::Get_Texture("buzz_color"));
+        //     obj->Add_Texture("tex_color", OpenGLTextureLibrary::Get_Texture("fire_texture"));
 
-        //     obj->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("basic"));
+        //     obj->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("fire"));
+            
+
+        //     mesh_object_array.push_back(obj);
         // }
 
         //// This for-loop updates the rendering model for each object on the list
@@ -417,7 +473,7 @@ public:
     virtual void Toggle_Next_Frame()
     {
 
-   float current_time = GLfloat(clock() - startTime) / CLOCKS_PER_SEC;
+        float current_time = GLfloat(clock() - startTime) / CLOCKS_PER_SEC;
 
         if (broom_ptr) {
         float y_offset = 0.1f * sin(current_time); 
@@ -441,6 +497,9 @@ public:
         for (auto &mesh_obj : mesh_object_array)
             mesh_obj->setTime(GLfloat(clock() - startTime) / CLOCKS_PER_SEC);
 
+        if (fire_quad) {
+            fire_quad->setTime(GLfloat(clock() - startTime) / CLOCKS_PER_SEC);
+        }
         if (bgEffect){
             bgEffect->setResolution((float)Win_Width(), (float)Win_Height());
             bgEffect->setTime(GLfloat(clock() - startTime) / CLOCKS_PER_SEC);
