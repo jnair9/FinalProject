@@ -32,6 +32,10 @@ class MyDriver : public OpenGLViewer
     OpenGLTriangleMesh* hat_ptr = nullptr;
     std::vector<std::vector<Vector3>> hat_frame_vertices;
     std::vector<std::vector<Vector3i>> hat_frame_elements;
+    std::vector<OpenGLTriangleMesh*> candles;
+    std::vector<Vector3f> candle_base_positions;
+    int frame = 0;  
+    float candle_scale = 0.9f;
     float frame_duration = 1.0f;  
     int current_hat_frame = 0;   
 
@@ -186,6 +190,38 @@ public:
             skybox = Add_Interactive_Object<OpenGLSkybox>();
             skybox->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("skybox"));
             skybox->Initialize();
+        }
+
+            // Candle positions
+        candle_base_positions = {
+            Vector3f(-0.3f, 0.4f, -0.2f),
+            Vector3f(-0.1f, 0.3f, -0.2f),
+            Vector3f( 0.3f, 0.3f, -0.2f),
+            Vector3f( 0.6f, 0.4f, -0.2f)
+        };
+        candle_scale = 0.9f;
+
+        // Create candles
+        for (int i = 0; i < 4; i++) {
+            auto candle = Add_Obj_Mesh_Object("obj/candle.obj");
+            float x = candle_base_positions[i][0];
+            float y = candle_base_positions[i][1];
+            float z = candle_base_positions[i][2];
+
+            Matrix4f cT;
+            cT << candle_scale, 0,          0,     x,
+                  0,           candle_scale,       0,     y,
+                  0,           0,          candle_scale, z,
+                  0,           0,          0,     1;
+
+            candle->Set_Model_Matrix(cT);
+            candle->Set_Ka(Vector3f(0.2f, 0.2f, 0.2f));
+            candle->Set_Kd(Vector3f(0.8f, 0.8f, 0.8f));
+            candle->Set_Ks(Vector3f(1, 1, 1));
+            candle->Set_Shininess(64);
+            candle->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("basic"));
+
+            candles.push_back(candle);
         }
 
         //// Here we load a bunny object with the basic shader to show how to add an object into the scene
@@ -467,7 +503,25 @@ public:
             0.05 * sin_r * sin_t, 0.05 * cos_r * sin_t, 0.05 * cos_t, 0.5 + z_offset,
             0, 0, 0, 1;
         broom_ptr->Set_Model_Matrix(t);
-    }     
+    }   
+        // Animate candles (only candle code changed)
+        for (size_t i = 0; i < candles.size(); i++) {
+            float x = candle_base_positions[i][0];
+            float base_y = candle_base_positions[i][1];
+            float z = candle_base_positions[i][2];
+
+            float bobbing = 0.05f * sin((current_time*2.0f) + (float)i);
+            float new_y = base_y + bobbing;
+
+            Matrix4f cT;
+            cT << candle_scale, 0,           0,           x,
+                  0,           0.2f,        0,           new_y,
+                  0,           0,           candle_scale, z,
+                  0,           0,           0,           1;
+
+            candles[i]->Set_Model_Matrix(cT);
+        }
+
         for (auto &mesh_obj : mesh_object_array)
             mesh_obj->setTime(GLfloat(clock() - startTime) / CLOCKS_PER_SEC);
 
