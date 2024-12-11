@@ -98,27 +98,7 @@ public:
         //// (3) Sky box (cubemap; if you want to load six background images for a skybox, use this one)
         //// (4) Sky sphere (if you want to implement a sky sphere, enlarge the size of the sphere to make it colver the entire scene and update its shaders for texture colors)
         //// By default, Option (2) (Buzz stars) is turned on, and all the other three are commented out.
-        {
-        // Create a quad mesh object
-        auto background_quad = Add_Tri_Mesh_Object(
-            {Vector3(-10, -10, -10), Vector3(10, -10, -10), Vector3(10, 10, -10), Vector3(-10, 10, -10)},
-            {Vector3i(0, 1, 2), Vector3i(0, 2, 3)});
-
-        // Set the UV coordinates for the quad
-        background_quad->mesh.Uvs() = {Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)};
-
-        // Set the material properties (not critical for background)
-        background_quad->Set_Ka(Vector3f(0.1f, 0.1f, 0.1f));
-        background_quad->Set_Kd(Vector3f(0.7f, 0.7f, 0.7f));
-        background_quad->Set_Ks(Vector3f(0.0f, 0.0f, 0.0f)); // No specular
-        background_quad->Set_Shininess(1.0f);
-
-        // Bind the background texture to the quad
-        background_quad->Add_Texture("tex_color", OpenGLTextureLibrary::Get_Texture("background_image"));
-
-        // Bind the basic shader to the quad
-        background_quad->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("basic"));
-        }
+       
         
         //// Background Option (1): Gradient color
         /*
@@ -186,6 +166,22 @@ public:
         //     //// bind shader to object
         //     sphere->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("basic"));
         // }
+        {
+            // Make sure these files exist in "cubemap/" directory or adjust paths
+            const std::vector<std::string> cubemap_files{
+                "cubemap/right1.jpg", // posx
+                "cubemap/left1.jpg",  // negx
+                "cubemap/up1.jpg",    // posy
+                "cubemap/negy.jpg",  // negy
+                "cubemap/back2.jpg", // posz
+                "cubemap/front1.jpg"   // negz
+            };
+            OpenGLTextureLibrary::Instance()->Add_CubeMap_From_Files(cubemap_files, "cube_map");
+
+            skybox = Add_Interactive_Object<OpenGLSkybox>();
+            skybox->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("skybox"));
+            skybox->Initialize();
+        }
 
         //// Here we load a bunny object with the basic shader to show how to add an object into the scene
         {
