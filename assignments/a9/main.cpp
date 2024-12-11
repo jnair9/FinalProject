@@ -29,6 +29,11 @@ class MyDriver : public OpenGLViewer
     clock_t startTime;
 
     OpenGLTriangleMesh* broom_ptr = nullptr;
+    OpenGLTriangleMesh* hat_ptr = nullptr;
+    std::vector<std::vector<Vector3>> hat_frame_vertices;
+    std::vector<std::vector<Vector3i>> hat_frame_elements;
+    float frame_duration = 1.0f;  
+    int current_hat_frame = 0;   
 
 
 public:
@@ -184,30 +189,41 @@ public:
         }
 
         //// Here we load a bunny object with the basic shader to show how to add an object into the scene
-        {
-            //// create object by reading an obj mesh
-            auto sorting_hat = Add_Obj_Mesh_Object("obj/sorting_hat.obj");
+           {
+            std::vector<std::string> hat_frame_files = {
+                "obj/frame1.obj",
+                "obj/frame2.obj",
+                "obj/frame3.obj",
+                "obj/frame4.obj"
+            };
 
-            //// set object's transform
+            // Load first frame as base mesh
+            hat_ptr = Add_Obj_Mesh_Object(hat_frame_files[0]);
+            
+            // Store vertices and elements from all frames
+            for(const auto& obj_file : hat_frame_files) {
+                Array<std::shared_ptr<TriangleMesh<3>>> meshes;
+                Obj::Read_From_Obj_File_Discrete_Triangles(obj_file, meshes);
+                hat_frame_vertices.push_back(meshes[0]->Vertices());
+                hat_frame_elements.push_back(meshes[0]->Elements());
+            }
+
+            // Setup the base mesh
             Matrix4f t;
             t << 0.02, 0, 0, 0,
-                0, 0.02, 0, 0,
-                0, 0, 0.02, 0,
-                0, 0, 0, 1;
-            sorting_hat->Set_Model_Matrix(t);
+                 0, 0.02, 0, 0,
+                 0, 0, 0.02, 0,
+                 0, 0, 0, 1;
+            hat_ptr->Set_Model_Matrix(t);
 
-            //// set object's material
-            sorting_hat->Set_Ka(Vector3f(0.1, 0.1, 0.1));
-            sorting_hat->Set_Kd(Vector3f(0.7, 0.7, 0.7));
-            sorting_hat->Set_Ks(Vector3f(2, 2, 2));
-            sorting_hat->Set_Shininess(128);
+            hat_ptr->Set_Ka(Vector3f(0.1, 0.1, 0.1));
+            hat_ptr->Set_Kd(Vector3f(0.7, 0.7, 0.7));
+            hat_ptr->Set_Ks(Vector3f(2, 2, 2));
+            hat_ptr->Set_Shininess(128);
 
-            //// bind texture to object
-            sorting_hat->Add_Texture("tex_color", OpenGLTextureLibrary::Get_Texture("hat_color"));
-            sorting_hat->Add_Texture("tex_normal", OpenGLTextureLibrary::Get_Texture("hat_normal"));
-
-            //// bind shader to object
-            sorting_hat->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("basic"));
+            hat_ptr->Add_Texture("tex_color", OpenGLTextureLibrary::Get_Texture("hat_color"));
+            hat_ptr->Add_Texture("tex_normal", OpenGLTextureLibrary::Get_Texture("hat_normal"));
+            hat_ptr->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("basic"));
         }
             {
             broom_ptr = Add_Obj_Mesh_Object("obj/broom.obj");
@@ -414,6 +430,24 @@ public:
     {
 
    float current_time = GLfloat(clock() - startTime) / CLOCKS_PER_SEC;
+        if(hat_ptr && !hat_frame_vertices.empty()) {
+            int new_frame = int(current_time / frame_duration) % hat_frame_vertices.size();
+            
+            if(new_frame != current_hat_frame) {
+                hat_ptr->mesh.Vertices() = hat_frame_vertices[new_frame];
+                hat_ptr->mesh.Elements() = hat_frame_elements[new_frame];
+                hat_ptr->Set_Data_Refreshed();
+                current_hat_frame = new_frame;
+            }
+            
+            float y_offset = 0.1f * sin(current_time * 0.8f);
+            Matrix4f t;
+            t << 0.02, 0, 0, 0,
+                 0, 0.02, 0, y_offset,
+                 0, 0, 0.02, 0,
+                 0, 0, 0, 1;
+            hat_ptr->Set_Model_Matrix(t);
+        }
 
         if (broom_ptr) {
         float y_offset = 0.1f * sin(current_time); 
