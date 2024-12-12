@@ -354,9 +354,9 @@ public:
 
             //// set object's transform
             Matrix4f t;
-            t << 2, 0, 0, -1,
-                0, 2, 0, -1,
-                0, 0, 2, 0,
+            t << 5, 0, 0, -1,
+                0, 5, 0, -1,
+                0, 0, 5, 0,
                 0, 0, 0, 1;
             sqad->Set_Model_Matrix(t);
 
