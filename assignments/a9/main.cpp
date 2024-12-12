@@ -90,6 +90,9 @@ public:
         OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/broom_normal.jpeg", "broom_normal");
         OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/transparent_color.jpg", "transparent_color");
         OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/white_color.jpg", "white_color");
+        OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/hogwarts_window_color.jpg", "hogwarts_window_color");
+        OpenGLTextureLibrary::Instance()->Add_Texture_From_File("tex/window2_color.jpg", "window2_color");
+
 
 
 
@@ -351,14 +354,14 @@ public:
 
             //// set object's transform
             Matrix4f t;
-            t << 1, 0, 0, 1.5,
-                0, 1, 0, 0,
-                0, 0, 1, 1.5,
+            t << 2, 0, 0, -1,
+                0, 2, 0, -1,
+                0, 0, 2, 0,
                 0, 0, 0, 1;
             sqad->Set_Model_Matrix(t);
 
             //// bind texture to object
-            sqad->Add_Texture("tex_color", OpenGLTextureLibrary::Get_Texture("window_color"));
+            sqad->Add_Texture("tex_color", OpenGLTextureLibrary::Get_Texture("window2_color"));
 
             //// bind shader to object
             sqad->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("blend"));
